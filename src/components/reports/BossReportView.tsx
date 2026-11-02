@@ -36,7 +36,13 @@ export const BossReportView: React.FC = () => {
     kpis,
     timeFilter,
     setTimeFilter,
+    users,
+    factoryName,
+    factoryLocation,
   } = useFactory();
+
+  const bossUser = users.find((u) => u.role === 'boss');
+  const accountantUser = users.find((u) => u.role === 'accountant');
 
   // Custom date range state for boss
   const [startDate, setStartDate] = useState('2026-10-01');
@@ -227,12 +233,12 @@ export const BossReportView: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 bg-amber-500 rounded-sm" />
-              <h1 className="text-xl font-extrabold tracking-tight font-mono text-neutral-900 dark:text-neutral-100">
-                TEXNO-PLAST INDUSTRIAL ZAVODI
+              <h1 className="text-xl font-extrabold tracking-tight font-mono text-neutral-900 dark:text-neutral-100 uppercase">
+                {factoryName} INDUSTRIAL
               </h1>
             </div>
             <p className="text-xs text-neutral-500 mt-1">
-              Boshqaruv va Rentabellik Tahlili Bo'yicha Bosh Direktorga Hisobot
+              Boshqaruv va Rentabellik Tahlili Bo'yicha Bosh Direktorga Hisobot · {factoryLocation}
             </p>
           </div>
 
@@ -418,10 +424,10 @@ export const BossReportView: React.FC = () => {
         {/* Signature Strip */}
         <div className="pt-8 border-t border-neutral-200 dark:border-neutral-800 flex items-center justify-between text-xs text-neutral-500 font-mono">
           <div>
-            <p>Bosh Direktor: Zafar Rahimov ____________ (Imzo)</p>
+            <p>Bosh Direktor: <span className="font-bold text-neutral-800 dark:text-neutral-200">{bossUser?.name || 'Asoschi'}</span> ____________ (Imzo)</p>
           </div>
           <div>
-            <p>Bosh Buxgalter: Nilufar Karimova ____________ (Imzo)</p>
+            <p>Bosh Buxgalter: <span className="font-bold text-neutral-800 dark:text-neutral-200">{accountantUser?.name || 'Buxgalter'}</span> ____________ (Imzo)</p>
           </div>
         </div>
       </div>

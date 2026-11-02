@@ -10,7 +10,10 @@ export interface UserProfile {
   role: UserRole;
   name: string;
   title: string;
+  phone?: string;
+  pinCode?: string;
   avatarColor: string;
+  createdAt?: string;
 }
 
 export type PaymentMethod = 'cash' | 'bank' | 'card' | 'currency';

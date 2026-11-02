@@ -69,6 +69,8 @@ export const Header: React.FC<HeaderProps> = ({
     timeFilter,
     setTimeFilter,
     currentUser,
+    users,
+    switchUserById,
   } = useFactory();
 
   const tabInfo = TAB_TITLES[currentTab] || {
@@ -153,6 +155,27 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden sm:inline">Yangi Amal</span>
           </button>
         )}
+
+        {/* Quick User Switcher in Header */}
+        <div className="flex items-center gap-1.5 pl-1.5 border-l border-neutral-200 dark:border-neutral-800">
+          <div
+            className={`w-7 h-7 rounded-lg ${currentUser.avatarColor} text-white font-bold text-xs flex items-center justify-center shrink-0`}
+            title={`${currentUser.name} (${currentUser.title})`}
+          >
+            {currentUser.name.slice(0, 1).toUpperCase()}
+          </div>
+          <select
+            value={currentUser.id}
+            onChange={(e) => switchUserById(e.target.value)}
+            className="hidden sm:block max-w-[150px] text-xs font-semibold bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-200 dark:border-neutral-700 rounded-lg px-2 py-1 focus:outline-hidden cursor-pointer truncate"
+          >
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name} ({u.role === 'boss' ? 'Boss' : u.role === 'production_mgr' ? 'Ish boshqaruvchi' : u.role === 'warehouse_mgr' ? 'Omborchi' : 'Buxgalter'})
+              </option>
+            ))}
+          </select>
+        </div>
 
         {/* Dark/Light mode toggle */}
         <button

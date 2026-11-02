@@ -42,8 +42,13 @@ interface ConfirmModalState {
 }
 
 interface FactoryContextType {
+  users: UserProfile[];
   currentUser: UserProfile;
   switchUser: (role: UserRole) => void;
+  switchUserById: (userId: string) => void;
+  addUser: (user: Omit<UserProfile, 'id'>) => void;
+  updateUser: (id: string, updates: Partial<UserProfile>) => void;
+  deleteUser: (id: string) => void;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
 
@@ -145,13 +150,94 @@ export const FactoryProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   const toggleDarkMode = () => setIsDarkMode((prev) => !prev);
 
-  // User state
-  const [currentUser, setCurrentUser] = useState<UserProfile>(INITIAL_USERS[0]);
+  // Dynamic Users State
+  const [users, setUsers] = useState<UserProfile[]>(() => {
+    const saved = localStorage.getItem(`${STORAGE_KEY}_users`);
+    return saved ? JSON.parse(saved) : INITIAL_USERS;
+  });
+
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
+    const savedId = localStorage.getItem(`${STORAGE_KEY}_cur_user`);
+    const initialUsersList: UserProfile[] = (() => {
+      const saved = localStorage.getItem(`${STORAGE_KEY}_users`);
+      return saved ? JSON.parse(saved) : INITIAL_USERS;
+    })();
+    if (savedId) {
+      const found = initialUsersList.find((u) => u.id === savedId);
+      if (found) return found;
+    }
+    return initialUsersList[0] || INITIAL_USERS[0];
+  });
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(users));
+  }, [users]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY}_cur_user`, currentUser.id);
+  }, [currentUser]);
+
+  const switchUserById = (userId: string) => {
+    const target = users.find((u) => u.id === userId);
+    if (target) {
+      setCurrentUser(target);
+      addAuditLog('status_change', 'system', `Foydalanuvchi tizimga kirdi: ${target.name} (${target.title})`);
+    }
+  };
 
   const switchUser = (role: UserRole) => {
-    const user = INITIAL_USERS.find((u) => u.role === role) || INITIAL_USERS[0];
-    setCurrentUser(user);
-    addAuditLog('status_change', 'system', `Foydalanuvchi tizimga kirdi: ${user.name} (${user.title})`);
+    const target = users.find((u) => u.role === role) || users[0];
+    if (target) {
+      setCurrentUser(target);
+      addAuditLog('status_change', 'system', `Foydalanuvchi tizimga kirdi: ${target.name} (${target.title})`);
+    }
+  };
+
+  const addUser = (newUser: Omit<UserProfile, 'id'>) => {
+    const created: UserProfile = {
+      ...newUser,
+      id: 'user-' + Date.now(),
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    setUsers((prev) => [...prev, created]);
+    addAuditLog('create', 'system', `Yangi tizim mas'uli qo'shildi: ${created.name} (${created.title})`);
+  };
+
+  const updateUser = (id: string, updates: Partial<UserProfile>) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === id ? { ...u, ...updates } : u))
+    );
+    if (currentUser.id === id) {
+      setCurrentUser((prev) => ({ ...prev, ...updates }));
+    }
+    addAuditLog('update', 'system', `Mas'ul ma'lumotlari tahrirlandi: ${updates.name || id}`);
+  };
+
+  const deleteUser = (id: string) => {
+    const target = users.find((u) => u.id === id);
+    if (!target) return;
+    if (users.length <= 1) {
+      requestConfirm(
+        'O\'chirib bo\'lmaydi',
+        'Tizimda kamida bitta mas\'ul (foydalanuvchi) qolishi shart.',
+        () => {},
+        false
+      );
+      return;
+    }
+    requestConfirm(
+      'Foydalanuvchini o\'chirish',
+      `"${target.name}" (${target.title}) akkauntini o'chirmoqchimisiz?`,
+      () => {
+        const remaining = users.filter((u) => u.id !== id);
+        setUsers(remaining);
+        if (currentUser.id === id) {
+          setCurrentUser(remaining[0]);
+        }
+        addAuditLog('delete', 'system', `Foydalanuvchi o'chirildi: ${target.name}`);
+      },
+      true
+    );
   };
 
   // Time filter state
@@ -678,6 +764,8 @@ export const FactoryProvider: React.FC<{ children: ReactNode }> = ({ children })
       'Demo ma\'lumotlarni tiklash',
       'Barcha kiritilgan ma\'lumotlar zavodning to\'liq boshlang\'ich demo holatiga qaytariladi. Davom etasizmi?',
       () => {
+        setUsers(INITIAL_USERS);
+        setCurrentUser(INITIAL_USERS[0]);
         setWarehouse(INITIAL_WAREHOUSE);
         setTransactions(INITIAL_TRANSACTIONS);
         setProductionBatches(INITIAL_PRODUCTION);
@@ -698,11 +786,21 @@ export const FactoryProvider: React.FC<{ children: ReactNode }> = ({ children })
       'Haqiqiy bo\'sh rejimga o\'tish',
       'DIQQAT! Barcha demo ma\'lumotlar butunlay tozalanadi va zavod tizimi bo\'sh holatda yangidan ish boshlaydi. Ishonchingiz komilmi?',
       () => {
+        const cleanBoss: UserProfile = {
+          id: 'user-boss',
+          role: 'boss',
+          name: 'Zavod Asoschisi (BOSS)',
+          title: 'Bosh Direktor',
+          avatarColor: 'bg-amber-600',
+          pinCode: '0000',
+        };
+        setUsers([cleanBoss]);
+        setCurrentUser(cleanBoss);
         setWarehouse([]);
         setTransactions([]);
         setProductionBatches([]);
         setSalesOrders([]);
-        setEmployees([INITIAL_EMPLOYEES[0]]); // Keep Boss
+        setEmployees([INITIAL_EMPLOYEES[0]]); // Keep Boss in employee roster
         setAttendance([]);
         setPayroll([]);
         setStockMovements([]);
@@ -716,6 +814,7 @@ export const FactoryProvider: React.FC<{ children: ReactNode }> = ({ children })
   const exportBackupJSON = () => {
     const backupData = {
       exportDate: new Date().toISOString(),
+      users,
       warehouse,
       transactions,
       productionBatches,
@@ -741,6 +840,10 @@ export const FactoryProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const data = JSON.parse(jsonStr);
       if (data.warehouse && data.transactions) {
+        if (data.users && Array.isArray(data.users)) {
+          setUsers(data.users);
+          if (data.users.length > 0) setCurrentUser(data.users[0]);
+        }
         setWarehouse(data.warehouse || []);
         setTransactions(data.transactions || []);
         setProductionBatches(data.productionBatches || []);
@@ -824,8 +927,13 @@ export const FactoryProvider: React.FC<{ children: ReactNode }> = ({ children })
   return (
     <FactoryContext.Provider
       value={{
+        users,
         currentUser,
         switchUser,
+        switchUserById,
+        addUser,
+        updateUser,
+        deleteUser,
         isDarkMode,
         toggleDarkMode,
         timeFilter,

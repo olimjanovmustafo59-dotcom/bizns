@@ -17,6 +17,7 @@ import { BossReportView } from './components/reports/BossReportView';
 import { AdminSecurityView } from './components/security/AdminSecurityView';
 import { ConfirmModal } from './components/common/ConfirmModal';
 import { QuickActionModal } from './components/common/QuickActionModal';
+import { ManageUsersModal } from './components/common/ManageUsersModal';
 import { ShieldAlert } from 'lucide-react';
 
 const AppContent: React.FC = () => {
@@ -25,6 +26,7 @@ const AppContent: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [isManageUsersOpen, setIsManageUsersOpen] = useState(false);
 
   // Check tab access based on active role
   const checkAccess = (tab: NavTab): boolean => {
@@ -62,6 +64,7 @@ const AppContent: React.FC = () => {
         onToggleCollapse={() => setIsCollapsed((prev) => !prev)}
         isMobileOpen={isMobileOpen}
         onCloseMobile={() => setIsMobileOpen(false)}
+        onOpenManageUsers={() => setIsManageUsersOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -70,6 +73,7 @@ const AppContent: React.FC = () => {
           currentTab={currentTab}
           onOpenMobile={() => setIsMobileOpen(true)}
           onOpenQuickAdd={() => setIsQuickAddOpen(true)}
+          onOpenManageUsers={() => setIsManageUsersOpen(true)}
         />
 
         <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto">
@@ -105,7 +109,9 @@ const AppContent: React.FC = () => {
               {currentTab === 'sales' && <SalesView />}
               {currentTab === 'employees' && <EmployeesView />}
               {currentTab === 'boss_report' && <BossReportView />}
-              {currentTab === 'security' && <AdminSecurityView />}
+              {currentTab === 'security' && (
+                <AdminSecurityView onOpenManageUsers={() => setIsManageUsersOpen(true)} />
+              )}
             </>
           )}
         </main>
@@ -113,6 +119,10 @@ const AppContent: React.FC = () => {
 
       {/* Global Modals */}
       <ConfirmModal />
+      <ManageUsersModal
+        isOpen={isManageUsersOpen}
+        onClose={() => setIsManageUsersOpen(false)}
+      />
       <QuickActionModal
         isOpen={isQuickAddOpen}
         onClose={() => setIsQuickAddOpen(false)}

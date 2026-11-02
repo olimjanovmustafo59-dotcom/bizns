@@ -8,6 +8,9 @@ import {
   ShieldAlert,
   ShieldCheck,
   UserCheck,
+  Users,
+  Plus,
+  Edit2,
   Lock,
   KeyRound,
   FileText,
@@ -17,16 +20,32 @@ import {
   Upload,
   CheckCircle2,
   AlertTriangle,
+  Phone,
+  Sparkles,
+  X,
+  BadgeCheck,
 } from 'lucide-react';
 import { useFactory } from '../../context/FactoryContext';
-import { UserRole } from '../../types';
+import { UserRole, UserProfile } from '../../types';
 import { ROLE_LABELS } from '../../utils/formatters';
-import { INITIAL_USERS } from '../../data/initialData';
+
+const AVATAR_COLORS = [
+  { label: 'Oltinrang (Amber)', class: 'bg-amber-600' },
+  { label: 'Ko\'k (Blue)', class: 'bg-blue-600' },
+  { label: 'Binafsharang (Violet)', class: 'bg-violet-600' },
+  { label: 'Yashil (Emerald)', class: 'bg-emerald-600' },
+  { label: 'Qizil (Rose)', class: 'bg-rose-600' },
+  { label: 'Moviy (Cyan)', class: 'bg-cyan-600' },
+];
 
 export const AdminSecurityView: React.FC = () => {
   const {
+    users,
     currentUser,
-    switchUser,
+    switchUserById,
+    addUser,
+    updateUser,
+    deleteUser,
     auditLogs,
     resetToDemoData,
     clearAllData,
@@ -36,6 +55,106 @@ export const AdminSecurityView: React.FC = () => {
 
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // User Add/Edit Modal State
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+
+  // Form State
+  const [name, setName] = useState('');
+  const [role, setRole] = useState<UserRole>('production_mgr');
+  const [title, setTitle] = useState('');
+  const [phone, setPhone] = useState('+998 ');
+  const [pinCode, setPinCode] = useState('');
+  const [avatarColor, setAvatarColor] = useState('bg-blue-600');
+
+  const openAddUserModal = (defaultRole: UserRole = 'production_mgr') => {
+    setEditingUser(null);
+    setName('');
+    setRole(defaultRole);
+    setTitle(
+      defaultRole === 'boss'
+        ? 'Bosh Direktor (Zavod Asoschisi)'
+        : defaultRole === 'production_mgr'
+        ? 'Ish Boshqaruvchi (Sex Boshlig\'i)'
+        : defaultRole === 'warehouse_mgr'
+        ? 'Bosh Omborchi (Sklad)'
+        : 'Bosh Buxgalter'
+    );
+    setPhone('+998 ');
+    setPinCode(String(Math.floor(1000 + Math.random() * 9000)));
+    setAvatarColor(
+      defaultRole === 'boss'
+        ? 'bg-amber-600'
+        : defaultRole === 'production_mgr'
+        ? 'bg-blue-600'
+        : defaultRole === 'warehouse_mgr'
+        ? 'bg-violet-600'
+        : 'bg-emerald-600'
+    );
+    setIsUserModalOpen(true);
+  };
+
+  const openEditUserModal = (user: UserProfile) => {
+    setEditingUser(user);
+    setName(user.name);
+    setRole(user.role);
+    setTitle(user.title);
+    setPhone(user.phone || '+998 ');
+    setPinCode(user.pinCode || '');
+    setAvatarColor(user.avatarColor || 'bg-amber-600');
+    setIsUserModalOpen(true);
+  };
+
+  const handleRoleChangeInForm = (newRole: UserRole) => {
+    setRole(newRole);
+    if (!editingUser) {
+      setTitle(
+        newRole === 'boss'
+          ? 'Bosh Direktor (Zavod Asoschisi)'
+          : newRole === 'production_mgr'
+          ? 'Ish Boshqaruvchi (Sex Boshlig\'i)'
+          : newRole === 'warehouse_mgr'
+          ? 'Bosh Omborchi (Sklad)'
+          : 'Bosh Buxgalter'
+      );
+      setAvatarColor(
+        newRole === 'boss'
+          ? 'bg-amber-600'
+          : newRole === 'production_mgr'
+          ? 'bg-blue-600'
+          : newRole === 'warehouse_mgr'
+          ? 'bg-violet-600'
+          : 'bg-emerald-600'
+      );
+    }
+  };
+
+  const handleSaveUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+
+    if (editingUser) {
+      updateUser(editingUser.id, {
+        name: name.trim(),
+        role,
+        title: title.trim() || ROLE_LABELS[role].title,
+        phone: phone.trim(),
+        pinCode: pinCode.trim(),
+        avatarColor,
+      });
+    } else {
+      addUser({
+        name: name.trim(),
+        role,
+        title: title.trim() || ROLE_LABELS[role].title,
+        phone: phone.trim(),
+        pinCode: pinCode.trim() || '1234',
+        avatarColor,
+      });
+    }
+    setIsUserModalOpen(false);
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -120,57 +239,124 @@ export const AdminSecurityView: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Current Active Account Card */}
-      <div className="p-5 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-12 h-12 rounded-xl ${currentUser.avatarColor} text-white font-bold text-lg flex items-center justify-center shrink-0 shadow-md`}
-            >
-              {currentUser.name.slice(0, 1)}
+      {/* 1. Zavod Mas'ullari va Akkauntlar Boshqaruvi (Boss, Ish Boshqaruvchi, Omborchi, Buxgalter) */}
+      <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden shadow-xs">
+        <div className="p-5 border-b border-neutral-200 dark:border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-500">
+                <Users className="w-5 h-5" />
+              </span>
+              <h2 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
+                Zavod Mas'ullari va Akkauntlar Boshqaruvi
+              </h2>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
-                  {currentUser.name}
-                </h3>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-sm bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                  {currentUser.role.toUpperCase()}
-                </span>
-              </div>
-              <p className="text-xs text-neutral-500 mt-0.5">
-                {currentUser.title}
-              </p>
-            </div>
+            <p className="text-xs text-neutral-500 mt-1">
+              Boss (Direktor), Ish boshqaruvchi (Manager), Bosh omborchi va Buxgalterni o'zingiz kiritishingiz, ism-familiyalarini tahrirlashingiz va yangi mas'ullar qo'shishingiz mumkin.
+            </p>
           </div>
 
-          {/* Quick Role Tester */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-neutral-500 font-medium">
-              Rolni sinab ko'rish:
-            </span>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {INITIAL_USERS.map((u) => (
-                <button
-                  key={u.role}
-                  onClick={() => switchUser(u.role)}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
-                    currentUser.role === u.role
-                      ? 'bg-amber-600 text-white shadow-xs'
-                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-white'
-                  }`}
-                >
-                  {u.role === 'boss'
-                    ? 'Boss'
-                    : u.role === 'accountant'
-                    ? 'Buxgalter'
-                    : u.role === 'production_mgr'
-                    ? 'Sex Boshlig\'i'
-                    : 'Omborchi'}
-                </button>
-              ))}
-            </div>
-          </div>
+          <button
+            onClick={() => openAddUserModal('production_mgr')}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg shadow-xs transition-colors cursor-pointer whitespace-nowrap self-end sm:self-center"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Yangi Mas'ul Qo'shish</span>
+          </button>
+        </div>
+
+        {/* Users Grid */}
+        <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {users.map((u) => {
+            const isActive = currentUser.id === u.id;
+            return (
+              <div
+                key={u.id}
+                className={`p-4 rounded-xl border transition-all ${
+                  isActive
+                    ? 'border-amber-500/60 bg-amber-500/5 dark:bg-amber-500/10 ring-1 ring-amber-500/20'
+                    : 'border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/40 hover:border-neutral-300 dark:hover:border-neutral-700'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-12 h-12 rounded-xl ${u.avatarColor} text-white font-bold text-lg flex items-center justify-center shrink-0 shadow-xs`}
+                    >
+                      {u.name.slice(0, 1).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-sm text-neutral-900 dark:text-neutral-100">
+                          {u.name}
+                        </h4>
+                        {isActive && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-sm border border-emerald-500/20">
+                            <BadgeCheck className="w-3 h-3" />
+                            Faol Tizimda
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs font-medium text-amber-600 dark:text-amber-400 mt-0.5">
+                        {u.title}
+                      </p>
+                      <div className="flex items-center gap-2 text-[11px] text-neutral-500 font-mono mt-1">
+                        <span>Rol: <b>{u.role.toUpperCase()}</b></span>
+                        {u.phone && <span>· Tel: {u.phone}</span>}
+                        {u.pinCode && <span>· PIN: {u.pinCode}</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions: Edit, Delete */}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openEditUserModal(u)}
+                      className="p-1.5 text-neutral-400 hover:text-amber-500 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
+                      title="Ism va lavozimni tahrirlash"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    {users.length > 1 && (
+                      <button
+                        onClick={() => deleteUser(u.id)}
+                        className="p-1.5 text-neutral-400 hover:text-rose-500 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
+                        title="O'chirish"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Switch to this user button */}
+                <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700/60 flex items-center justify-between">
+                  <span className="text-[11px] text-neutral-500">
+                    {u.role === 'boss'
+                      ? 'Barcha hisobot va kassa ruxsati'
+                      : u.role === 'production_mgr'
+                      ? 'Ishlab chiqarish va sex liniyasi'
+                      : u.role === 'warehouse_mgr'
+                      ? 'Ombor qoldiqlari va kirim/sarf'
+                      : 'Moliya, kassa va oyliklar'}
+                  </span>
+
+                  {!isActive ? (
+                    <button
+                      onClick={() => switchUserById(u.id)}
+                      className="px-3 py-1 text-xs font-semibold text-neutral-800 dark:text-neutral-200 bg-white dark:bg-neutral-700 border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-600 rounded-md transition-colors cursor-pointer"
+                    >
+                      Shu akkauntga o'tish →
+                    </button>
+                  ) : (
+                    <span className="text-xs font-bold text-amber-500">
+                      Hozir siz shu profildasiz
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -194,9 +380,9 @@ export const AdminSecurityView: React.FC = () => {
               <tr className="border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-800/50 text-neutral-500">
                 <th className="py-3 px-4 font-semibold">Tizim Funksiyasi / Bo'lim</th>
                 <th className="py-3 px-4 font-semibold text-center">Boss (Super Admin)</th>
-                <th className="py-3 px-4 font-semibold text-center">Bosh Buxgalter</th>
-                <th className="py-3 px-4 font-semibold text-center">Sex Boshlig'i</th>
+                <th className="py-3 px-4 font-semibold text-center">Ish Boshqaruvchi</th>
                 <th className="py-3 px-4 font-semibold text-center">Omborchi</th>
+                <th className="py-3 px-4 font-semibold text-center">Bosh Buxgalter</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800 font-medium">
@@ -211,15 +397,6 @@ export const AdminSecurityView: React.FC = () => {
                     </span>
                   </td>
                   <td className="py-3 px-4 text-center">
-                    {row.accountant ? (
-                      <span className="inline-flex items-center text-emerald-500 font-bold">
-                        ✓ Ruxsat
-                      </span>
-                    ) : (
-                      <span className="text-neutral-400">✗ Cheklangan</span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4 text-center">
                     {row.production_mgr ? (
                       <span className="inline-flex items-center text-emerald-500 font-bold">
                         ✓ Ruxsat
@@ -230,6 +407,15 @@ export const AdminSecurityView: React.FC = () => {
                   </td>
                   <td className="py-3 px-4 text-center">
                     {row.warehouse_mgr ? (
+                      <span className="inline-flex items-center text-emerald-500 font-bold">
+                        ✓ Ruxsat
+                      </span>
+                    ) : (
+                      <span className="text-neutral-400">✗ Cheklangan</span>
+                    )}
+                  </td>
+                  <td className="py-3 px-4 text-center">
+                    {row.accountant ? (
                       <span className="inline-flex items-center text-emerald-500 font-bold">
                         ✓ Ruxsat
                       </span>
@@ -255,7 +441,7 @@ export const AdminSecurityView: React.FC = () => {
             </h3>
           </div>
           <p className="text-xs text-neutral-500 leading-relaxed">
-            Zavodning barcha kassa, ombor, ishlab chiqarish va xodimlar ma'lumotlarini to'liq JSON faylga yuklab oling yoki saqlangan nusxadan qayta tiklang.
+            Zavodning barcha kassa, ombor, ishlab chiqarish, mas'ullar va xodimlar ma'lumotlarini to'liq JSON faylga yuklab oling yoki saqlangan nusxadan qayta tiklang.
           </p>
 
           <div className="flex flex-wrap items-center gap-2 pt-2">
@@ -381,6 +567,141 @@ export const AdminSecurityView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Modal: Add / Edit User (Boss, Ish boshqaruvchi, Omborchi, Buxgalter) */}
+      {isUserModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="relative w-full max-w-lg p-6 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-xl shadow-2xl">
+            <button
+              onClick={() => setIsUserModalOpen(false)}
+              className="absolute top-4 right-4 p-1.5 text-neutral-400 hover:text-neutral-200 rounded-lg cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                <Users className="w-5 h-5 text-amber-500" />
+                {editingUser ? 'Mas\'ul Ma\'lumotlarini Tahrirlash' : 'Yangi Mas\'ul Akkaunt Qo\'shish'}
+              </h2>
+              <p className="text-xs text-neutral-500 mt-0.5">
+                Boss, Ish boshqaruvchi, Omborchi yoki Buxgalter ma'lumotlarini o'zingiz belgilang
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
+                  Mas'ul F.I.O (Ism va Familiya) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Masalan: Mustafo Olimjanov yoki Akmal Valiyev"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Tizimdagi Roli (Huquqi) *
+                  </label>
+                  <select
+                    value={role}
+                    onChange={(e) => handleRoleChangeInForm(e.target.value as UserRole)}
+                    className="w-full px-3 py-2 text-xs bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg focus:outline-hidden"
+                  >
+                    <option value="boss">Boss (Super Admin — To'liq huquq)</option>
+                    <option value="production_mgr">Ish Boshqaruvchi (Sex va Liniya)</option>
+                    <option value="warehouse_mgr">Omborchi (Sklad va Qoldiqlar)</option>
+                    <option value="accountant">Bosh Buxgalter (Kassa va Moliya)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Rasmiy Lavozimi *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Masalan: Zavod Boshqaruvchisi"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="w-full px-3 py-2 text-xs bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Telefon Raqami
+                  </label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-mono bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg focus:outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1">
+                    Kirish PIN Kodi / Parol
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="4 xonali PIN yoki parol..."
+                    value={pinCode}
+                    onChange={(e) => setPinCode(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-mono bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              {/* Avatar Color Picker */}
+              <div>
+                <label className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
+                  Profil Rangi (Avatar)
+                </label>
+                <div className="flex items-center gap-3">
+                  {AVATAR_COLORS.map((c) => (
+                    <button
+                      type="button"
+                      key={c.class}
+                      onClick={() => setAvatarColor(c.class)}
+                      className={`w-7 h-7 rounded-lg ${c.class} transition-transform cursor-pointer ${
+                        avatarColor === c.class ? 'scale-125 ring-2 ring-white shadow-md' : 'opacity-70 hover:opacity-100'
+                      }`}
+                      title={c.label}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-3 border-t border-neutral-100 dark:border-neutral-800">
+                <button
+                  type="button"
+                  onClick={() => setIsUserModalOpen(false)}
+                  className="px-4 py-2 text-xs font-medium text-neutral-400 bg-neutral-800 rounded-lg cursor-pointer"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors cursor-pointer"
+                >
+                  {editingUser ? 'O\'zgarishlarni Saqlash' : 'Akkauntni Qo\'shish'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

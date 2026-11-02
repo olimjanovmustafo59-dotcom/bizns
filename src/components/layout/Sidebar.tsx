@@ -47,7 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen,
   onCloseMobile,
 }) => {
-  const { currentUser, switchUser, kpis } = useFactory();
+  const { currentUser, users, switchUserById, kpis } = useFactory();
 
   // Role-based permissions
   const navItems: {
@@ -220,7 +220,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </p>
                 <div className="flex items-center gap-1">
                   <span className="text-[10px] text-amber-400 font-mono font-medium truncate">
-                    {currentUser.role === 'boss' ? 'SUPER ADMIN (BOSS)' : currentUser.title}
+                    {currentUser.title}
                   </span>
                 </div>
               </div>
@@ -228,20 +228,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {!isCollapsed && (
-            <div className="mt-2.5 pt-2 border-t border-neutral-800 flex items-center justify-between text-[11px] text-neutral-400">
-              <span className="flex items-center gap-1 text-amber-500/90 font-medium">
-                <Sparkles className="w-3 h-3" />
-                Rolni almashtirish:
-              </span>
+            <div className="mt-2.5 pt-2 border-t border-neutral-800 space-y-1">
+              <div className="flex items-center justify-between text-[11px] text-neutral-400">
+                <span className="flex items-center gap-1 text-amber-500/90 font-medium">
+                  <Sparkles className="w-3 h-3" />
+                  Mas'ul shaxsni tanlash:
+                </span>
+                <button
+                  onClick={() => handleNavClick('security')}
+                  className="text-[10px] text-amber-400 hover:underline cursor-pointer"
+                  title="Akkauntlarni sozlash"
+                >
+                  Boshqarish
+                </button>
+              </div>
               <select
-                value={currentUser.role}
-                onChange={(e) => switchUser(e.target.value as UserRole)}
-                className="bg-neutral-800 text-neutral-200 border border-neutral-700 text-[11px] rounded-md px-1.5 py-0.5 focus:outline-hidden cursor-pointer"
+                value={currentUser.id}
+                onChange={(e) => switchUserById(e.target.value)}
+                className="w-full bg-neutral-800 text-neutral-200 border border-neutral-700 text-[11px] rounded-md px-2 py-1 focus:outline-hidden cursor-pointer"
               >
-                <option value="boss">Boss (Super Admin)</option>
-                <option value="accountant">Bosh Buxgalter</option>
-                <option value="production_mgr">Sex Boshlig'i</option>
-                <option value="warehouse_mgr">Ombor Mudiri</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({u.role === 'boss' ? 'Boss' : u.role === 'production_mgr' ? 'Ish boshqaruvchi' : u.role === 'warehouse_mgr' ? 'Omborchi' : 'Buxgalter'})
+                  </option>
+                ))}
               </select>
             </div>
           )}
