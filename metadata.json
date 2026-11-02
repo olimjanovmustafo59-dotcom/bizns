@@ -1,0 +1,6 @@
+{
+  "name": "ZavodPro — Zavod Boshqaruv Tizimi",
+  "description": "Zavod asoschisi (BOSS) uchun ishlab chiqarish, moliya, ombor, sotuv va xodimlarni boshqarish bo'yicha professional boshqaruv tizimi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
